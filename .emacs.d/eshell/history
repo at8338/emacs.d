@@ -1,0 +1,11 @@
+cd ..
+cd ..
+gtags -v
+cd ..
+cd ..
+helm-gtags -v
+cd ..
+cd ..
+gtags -v
+cd ..
+gtags -v
