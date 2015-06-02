@@ -1674,6 +1674,15 @@ are always included."
 ;; (global-set-key [?\M-=] 'multi-line) 
 (global-set-key [S-f10] 'multi-line) 
 
+
+;;=====================================
+;; 15.5.1 文字の折り返し無効
+;;-------------------------------------
+;; default- を追加しないとできなかった。
+;;=====================================
+(setq-default default-truncate-lines t)
+(setq-default default-truncate-partial-width-windows t)
+
 ;;=====================================
 ;;; 30.3 2 分割した画面を入れ替える
 ;;-------------------------------------
@@ -1768,6 +1777,94 @@ are always included."
               (local-set-key (kbd "C-t") 'helm-gtags-pop-stack)))
 
 
+
+;; ====================================
+;; 46.2.1 繰り返し処理の自動繰り返し ― dmacro  
+;; ------------------------------------
+(defconst *dmacro-key* "\C-t" "\C-@")
+(global-set-key *dmacro-key* 'dmacro-exec)
+(autoload 'dmacro-exec "dmacro" nil t)
+
+
+;; ====================================
+;;  49.2.1 isearch で C-w のように文字を 1 文字ずつ追加
+;; ------------------------------------
+;; -s C-wとすると， isearch でカーソル付近の単語が追加されます．しかし，日本語では非常に長い部分が追加されてしまい，不便です． 
+;; こで，以下のような設定を追加します．すると，C-s C-dとすると，カーソル付近の文字を 1 文字ずつ追加してくれます． 
+;; ====================================
+(defun isearch-yank-char ()
+  "Pull next character from buffer into search string."
+  (interactive)
+  (isearch-yank-string
+   (save-excursion
+     (and (not isearch-forward) isearch-other-end
+          (goto-char isearch-other-end))
+     (buffer-substring (point) (1+ (point))))))
+(define-key isearch-mode-map "\C-f" 'isearch-yank-char)
+
+
+;; ====================================
+;;  49.2.2 isearch の検索語を 1 文字ずつ消す
+;; ------------------------------------
+;; Sのように単語全体ではなく，一文字ずつ消していくことができます．
+;; 
+;; 詳しい使い方は?
+;; 単語をC-wで追加した後，C-oとすると一文字ずつ消していくことができます． 
+;; ====================================
+(defun isearch-real-delete-char ()
+  (interactive)
+  (setq isearch-string
+        (if (= (length isearch-string) 1)
+            isearch-string
+          (substring isearch-string 0 (- (length isearch-string) 1)))
+        isearch-message isearch-string
+        isearch-yank-flag t)
+  (isearch-search-and-update))
+
+(define-key isearch-mode-map "\C-b" 'isearch-real-delete-char)
+
+
+
+;;=====================================
+;;; 42.9.4 対応する括弧へ飛ぶ
+;;-------------------------------------
+;;以下のように .emacs に記入しておくと C-x %で対応する括弧に簡単に飛べるようになります.
+;;=====================================
+(progn
+  (defvar com-point nil
+    "Remember com point as a marker. \(buffer specific\)")
+  (set-default 'com-point (make-marker))
+  (defun getcom (arg)
+    "Get com part of prefix-argument ARG."
+    (cond ((null arg) nil)
+          ((consp arg) (cdr arg))
+          (t nil)))
+  (defun paren-match (arg)
+    "Go to the matching parenthesis."
+    (interactive "P")
+    (let ((com (getcom arg)))
+      (if (numberp arg)
+          (if (or (> arg 99) (< arg 1))
+              (error "Prefix must be between 1 and 99.")
+            (goto-char
+             (if (> (point-max) 80000)
+                 (* (/ (point-max) 100) arg)
+               (/ (* (point-max) arg) 100)))
+            (back-to-indentation))
+        (cond ((looking-at "[\(\[{]")
+               (if com (move-marker com-point (point)))
+               (forward-sexp 1)
+               (if com
+                   (paren-match nil com)
+                 (backward-char)))
+;;               ((looking-at "[])]"})
+              ((looking-at "[\]\)}]")   ;ソースがおかしいので修正 2006/4/18
+               (forward-char)
+               (if com (move-marker com-point (point)))
+               (backward-sexp 1)
+               (if com (paren-match nil com)))
+              (t (error ""))))))
+  (define-key ctl-x-map "%" 'paren-match))
 
 
 ;;=====================================
